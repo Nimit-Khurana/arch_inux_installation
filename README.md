@@ -1,2 +1,149 @@
-# arch_inux_installation
-installing arch linux  on a device step by step
+# arch_inux_installation ona a hdd from a linux env
+# installing arch linux  on a device step by step
+
+# (Step1) MAKING A BOOTABLE ARCH USB DRIVE---->
+[user]~ lsblk # shows all the devices available
+              # device id should be given as sdx with partitions sdx1,sdx2, and so on
+
+# sdz down is the device id for the usb
+# this will make a bootable usb
+[user@system]~ dd if=/path_to_arch.iso_file of=/dev/sdz status="progress"
+
+# boot from the usb
+
+# plug-in a hdd to install arch on and make sure there is no important data on it.
+# check the device id for the device
+# connect by ethernet or run wifi-menu and connect to wifi
+[user@usb]~ wifi-menu
+
+# (Step2)CREATING PARTITIONS ON HDD---->
+# swap | root(/) | home(/home) | boot
+# fdisk into hdd: sdx is the hdd device id
+[user@usb]~ fdisk /dev/sdx
+# you will enter a new comamnd line
+# 'd' will delete the hdd
+# 'p' print the hdd partition table
+# 'n' to make a new partition
+# 'w' to write the changes
+# keep the partition type to primary
+Command (m for help):p
+Command (m for help):d
+# make a 200 MB BOOT partition
+Command (m for help):n
+# press enter for partition number unless you want to number the partition
+# press enter for First sector
+# enter '+200M' to make a 200 MB partition when asked for Last Sector
+# check whether the partition is made
+Command (m for help):p
+
+# create a SWAP partition: used when you hibernate your computer (atleast 1.5*ram_size)
+Command (m for help):n
+# enter the swap values '+XG' when asked for last sector
+# check whether the partition is made
+Command (m for help):p
+
+# make a ROOT partition: all programs are here
+Command (m for help):n
+# size >=15GB
+# check whether the partition is made
+Command (m for help):p
+
+# make a HOME partition: all user data is here
+Command (m for help):n
+# rest of the size of hdd goes here
+# check whether the partition is made
+# there should be 4 partitions
+Command (m for help):p
+# it should look ksimilar to this: ignore the 'Type' and 'Device'. You are not there yet
+# also my hdd is dual-booted, so Windows type partition can be seen
+Device         Start        End    Sectors   Size Type
+/dev/sdx1       2048     ------     ------   200M EFI System
+/dev/sdx2     ------     ------     ------   6G   Linux Swap
+/dev/sdx3     ------    -------     ------   25G  /
+/dev/sdx4    -------  ---------  ----------- 916.7G /home
+
+# this will write the changes and hdd will be formatted to new partition table
+Command (m for help):w
+# will return to user command prompt '[user]'
+
+# (Step3)MAKING FILESYSTEM---->
+# make the BOOT, ROOT and HOME partition ext4 filesystem
+[user@usb]~ mkfs.ext4 /dev/sdx1
+[user@usb]~ mkfs.ext4 /dev/sdx3
+[user@usb]~ mkfs.ext4 /dev/sdx4
+
+# always keep on checking
+[user@usb]~ lsblk
+# making swap
+[user@usb]~ mkswap /dev/sdx2
+[user@usb]~ swapon /dev/sdx2
+
+# (Step4)MOUNTING FILESYSTEM---->
+# lsblk and obseerve that none of the partitions have a mount point
+# to modify the partitions, mount the partitions
+[user@usb]~ mount /dev/sdx3 /mnt
+# gives lost+found folder
+[user@usb]~ ls /mnt
+# check for mount point of sdx3
+[user@usb]~ lsblk
+[user@usb]~ mkdir /mnt/home
+[user@usb]~ ls /mnt
+[user@usb]~ mkdir /mnt/boot
+[user@usb]~ mount /dev/sdx1 /mnt/boot
+[user@usb]~ mount /dev/sdx4 /mnt/home
+# check sdx1,3,4 should have mountpoints
+[user@usb]~ lsblk
+
+# install arch on /mnt which is the mounted ROOT partition of hdd
+[user@usb]~ pacstrap /mnt base base-devel vim *may add other packages*
+# once this step is done, you do not have to rely on usb as it will install basic arch packages on hdd
+# generating fstab: (/etc/fstab) we wont have to mount the partitions everytime
+[user@usb]~ genfstab -U /mnt >> /mnt/etc/fstab
+# you can check the contents of fstab:
+[user@usb]~ vim /mnt/etc/fstab
+
+# Till now you were doing all this from your usb
+# (Step5)Change root(user) to the hdd--->
+[user@usb]~ arch-chroot /mnt
+[user@hdd]~ ls
+# shows all directories of arch installed on hdd from usb
+
+# install, start and enable 'network manager' for arch
+# used for ethernet or wifi
+[user@hdd]~ pacman -S networkmanager
+[user@hdd]~ systemctl start NetworkManager
+[user@hdd]~ systemctl enable NetworkManager
+# installing bootloader
+[user@hdd]~ pacman -S grub
+[user@hdd]~ grub-install --target-i386-pc /dev/sdx
+# making grub config file
+[user@hdd]~ grub-mkconfig -o /boot/grub/grub.cfg
+# since bootloader(grub) is installed, arch will be shown during boot time
+# set password for root
+[user@hdd]~ passwd
+# generate locale by uncommenting
+[user@hdd]~ vim /etc./locale.gen
+[user@hdd]~ locale-gen
+[user@hdd]~ vim /etc/locale.conf
+# add 'LANG=en-US.UTF-8' to locale.conf
+
+# set timezone: ln is for establishing link
+[user@hdd]~ ln -sf /usr/share/zoneinfo/<country>/<city> /etc/localtime
+
+# add a host
+[user@hdd]~ vim /etc/hostname
+# add "any_name"
+
+# installing os-prober: only when you are dual-booting
+# this will make an entry of windows in fstab file and will be shown during boot along with arch
+[user@hdd]~ pacman -S os-prober
+# exit from arch on hdd
+[user@hdd]~ exit
+# unmount all mounted partitions: -R for recursive i.e on /mnt
+[user@usb]~ umount -R /mnt
+# should be unmounted, check,
+[user@hdd]~ lsblk
+[user@hdd]~ reboot
+# remove usb and you will boot into arch on hdd
+# you will only get a command line since only base and base-devel were installed
+# install a desktop env., display manager and other utilities as per applications given on arch
