@@ -145,3 +145,17 @@ Command (m for help):w
 # remove usb and you will boot into arch on hdd
 # you will only get a command line since only base and base-devel were installed
 # install a desktop env., display manager and other utilities as per applications given on arch
+
+# adding a user, m makes the user home directory, g adds user to group
+[user]~ useradd -m -g wheel <user_name>
+# password for a user
+[user]~ passwd <user_name>
+# make the user a sudoer: edit /etc/sudoers
+
+# install a few required packages
+[user]~ sudo pacman -S xorg-server xorg-init
+
+# installing apps from AUR
+[user]~ sudo pacman -Sy yaourt
+
+# check: https://wiki.archlinux.org/index.php/list_of_applications
